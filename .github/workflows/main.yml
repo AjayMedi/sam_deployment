@@ -26,16 +26,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.11'
+
       - name: Build SAM application
         run: sam build --template samtemplate.yml
 
       - name: Package SAM application
-        run: sam package \
-              --output-template-file packaged.yaml \
-              --s3-bucket samtestbucket22  # Change this to your S3 bucket name
+        run: sam package --output-template-file packaged.yaml --s3-bucket samtestbucket22  # Change this to your S3 bucket name
 
       - name: Deploy SAM application
-        run: sam deploy \
-              --stack-name samdeploymenttest \
-              --template-file packaged.yaml \
-              --capabilities CAPABILITY_IAM
+        run: sam deploy --stack-name samdeploymenttest --template-file packaged.yaml --capabilities CAPABILITY_IAM
