@@ -1,4 +1,4 @@
-name: Deploy SAM Template
+name: Deploy SAM Template to aws
 
 on:
   workflow_call:
