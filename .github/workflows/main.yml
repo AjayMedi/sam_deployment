@@ -1,7 +1,7 @@
 name: Deploy SAM Template to aws
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       environment:
         description: What AWS environment to deploy to
