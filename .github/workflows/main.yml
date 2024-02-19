@@ -8,35 +8,6 @@ on:
         required: true
         type: string
         default: DEV
-      aws-region:
-        description: What AWS region to deploy to
-        required: false
-        type: string
-        default: us-east-2
-      s3-bucket:
-        description: What AWS S3-bucket to place package in
-        required: false
-        type: string
-        default: samtestbucket22
-      parameter-overrides:
-        description: Parameter overrides for this deploysment (space-delimited, key=value)
-        required: false
-        type: string
-        default: ''
-      git-ref:
-        description: Git ref (branch/tag) to deploy
-        required: true
-        type: string
-      source_root:
-        description: Where the PYTHON source code files reside in this repo
-        required: false
-        type: string
-        default: .
-      python-version:
-        description: What version of Python to use
-        required: false
-        type: string
-        default: '3.11'
 
 jobs:
   deploy:
