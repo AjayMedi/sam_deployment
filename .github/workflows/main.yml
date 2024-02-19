@@ -52,6 +52,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+        environment:
+          name: ${{ inputs.environment }}
+
       - name: Set up AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -59,16 +62,67 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2  # Change this to your desired AWS region
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Env
+        run: bash -c set
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          python-version: '3.11'
-
-      - name: Build SAM application
-        run: sam build --template samtemplate.yml
-
-      - name: Package SAM application
-        run: sam package --output-template-file packaged.yaml --s3-bucket samtestbucket22  # Change this to your S3 bucket name
-
-      - name: Deploy SAM application
-        run: sam deploy --stack-name samdeploymenttest --template-file packaged.yaml --capabilities CAPABILITY_IAM
+          ref: ${{ inputs.git-ref }}
+      - name: Install Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{inputs.python-version}}
+      - name: Setup AWS/SAM
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      #- name: Setup AWS credentials
+        #uses: aws-actions/configure-aws-credentials@v2
+        #with:
+          #aws-access-key-id: ${{ secrets[env.access_key_id] }}
+          #aws-secret-access-key: ${{ secrets[env.secret_access_key] }}
+          #aws-region: ${{ inputs.aws-region }}
+      #- name: Set github credentials for internal repos
+        # need a user with access to read the repos in ameritas
+        # When pip builds from source, it clones the repo for which it needs read access.
+        #run: |
+          #git config --global url."https://${{ secrets.GHP_USER }}:${{ secrets.GHP_TOKEN }}@github".insteadOf https://github
+      - name: Run pre-script
+        if: ${{ inputs.pre-script != '' }}
+        run: ${{ inputs.pre-script }}
+      - name: Install poetry
+        run: pip install --upgrade pip poetry
+      - name: Install poetry-aws-sam
+        run: |
+          poetry self add git+https://github.com/ameritascorp/APICOE-poetry-aws-sam.git@v1.1.0
+      - name: SAM build
+        # without-hashes: needed for installing from source.
+        # pip, for some reason, doesn't like the hashes in the requirements file when it
+        # builds from source.
+        run: poetry sam --without-hashes
+      - name: SAM package
+        run: |
+          sam package \
+            --region ${{ inputs.aws-region }} \
+            --s3-bucket ${{ inputs.s3-bucket }}
+      - name: SAM deploy
+        run: |
+          if [[ -z "${{ inputs.parameter-overrides }}" ]]; then
+            echo 'Deploying without parameter overrides'
+            sam deploy \
+              --no-progressbar \
+              --no-confirm-changeset \
+              --no-fail-on-empty-changeset \
+              --region ${{ inputs.aws-region }} \
+              --s3-bucket ${{ inputs.s3-bucket }}
+          else
+            echo 'Deploying with parameter overrides'
+            sam deploy \
+              --no-progressbar \
+              --no-confirm-changeset \
+              --no-fail-on-empty-changeset \
+              --region ${{ inputs.aws-region }} \
+              --s3-bucket ${{ inputs.s3-bucket }} \
+              --parameter-overrides \
+                ${{ inputs.parameter-overrides }}
+          fi
