@@ -37,11 +37,6 @@ on:
         required: false
         type: string
         default: '3.11'
-      pre-script:
-        description: A custom script that might be needed before deploying
-        required: false
-        type: string
-        default: ''
 
 jobs:
   deploy:
