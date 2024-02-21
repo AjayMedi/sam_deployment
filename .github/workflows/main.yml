@@ -1,5 +1,9 @@
 name: Deploy SAM Template
+
 on:
+  push:
+    branches:
+      - main  # Change this to your main branch name
   workflow_dispatch:  # Manually trigger the workflow
 
 jobs:
