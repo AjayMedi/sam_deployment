@@ -1,7 +1,7 @@
-name: Deploy SAM Template
+name: Deploy SAM Template called
 
 on:
-  workflow_call:  # Manually trigger the workflow
+  workflow_dispatch:  # Manually trigger the workflow
 
 jobs:
   deploy:
