@@ -78,8 +78,7 @@ jobs:
       - name: Install poetry
         run: pip install --upgrade pip poetry
       - name: Install poetry-aws-sam
-        run: |
-          poetry self add git+https://github.com/ameritascorp/APICOE-poetry-aws-sam.git@v1.1.0
+        run: curl -sSL https://install.python-poetry.org | python -
       - name: SAM build
         # without-hashes: needed for installing from source.
         # pip, for some reason, doesn't like the hashes in the requirements file when it
