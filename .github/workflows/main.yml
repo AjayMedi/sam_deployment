@@ -3,11 +3,11 @@ name: Deploy SAM Template
 on:
   workflow_call:  # Manually trigger the workflow
     inputs:
-      #environment:
-        #description: What AWS environment to deploy to
-        #required: true
-        #type: string
-        #default: DEV
+      environment:
+        description: What AWS environment to deploy to
+        required: true
+        type: string
+        default: DEV
       aws-region:
         description: What AWS region to deploy to
         required: false
@@ -52,7 +52,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-        environment:
+        env:
           name: ${{ inputs.environment }}
 
       - name: Set up AWS credentials
