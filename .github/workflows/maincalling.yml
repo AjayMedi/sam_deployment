@@ -1,0 +1,16 @@
+name: Deploy SAM Template
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+  trigger_sai_test_workflow: # Define a separate job to trigger the sai-test workflow
+    needs: Checkout # Ensure this job runs after the deploy jobs
+    name: deploy to aws
+    uses: AjayMedi/sam_deployment/.github/workflows/main.yml@main
