@@ -1,126 +1,37 @@
-name: Deploy to AWS
+name: Deploy SAM Template
+
 on:
-  workflow_call:
-    inputs:
-      environment:
-        description: What AWS environment to deploy to
-        required: true
-        type: string
-        default: DEV
-      aws-region:
-        description: What AWS region to deploy to
-        required: false
-        type: string
-        default: us-east-2
-      s3-bucket:
-        description: What AWS S3-bucket to place package in
-        required: false
-        type: string
-        default: samtestbucket22
-      parameter-overrides:
-        description: Parameter overrides for this deploysment (space-delimited, key=value)
-        required: false
-        type: string
-        default: ''
-      git-ref:
-        description: Git ref (branch/tag) to deploy
-        required: true
-        type: string
-      source_root:
-        description: Where the PYTHON source code files reside in this repo
-        required: false
-        type: string
-        default: ./app
-      python-version:
-        description: What version of Python to use
-        required: false
-        type: string
-        default: '3.10'
-      pre-script:
-        description: A custom script that might be needed before deploying
-        required: false
-        type: string
-        default: ''
+  push:
+    branches:
+      - main  # Change this to your main branch name
+  workflow_dispatch:  # Manually trigger the workflow
 
 jobs:
-
   deploy:
-    name: Prepare and deploy SAM application
+    name: Deploy SAM Template
     runs-on: ubuntu-latest
-    # Set the environment
-    environment:
-      name: ${{ inputs.environment }}
+
     steps:
-      - name: Given environment, select appropriate creds
-        run: |
-          DEPLOY_ENV=$(echo ${{ inputs.environment }} | tr '[:lower:]' '[:upper:]')
-          if [[ ! "DEV-TEST-MODEL-PROD" =~ (-|^)$DEPLOY_ENV(-|$) ]]; then
-            echo "Invalid environment specified: ${{ inputs.environment }}"
-            exit 1
-          fi
-          echo "access_key_id=AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
-          echo "secret_access_key=AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
-      - name: Env
-        run: bash -c set
       - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.git-ref }}
-      - name: Install Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{inputs.python-version}}
-      - name: Setup AWS/SAM
-        uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
-      - name: Setup AWS credentials
+        uses: actions/checkout@v2
+
+      - name: Set up AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets[env.access_key_id] }}
-          aws-secret-access-key: ${{ secrets[env.secret_access_key] }}
-          aws-region: ${{ inputs.aws-region }}
-      - name: Set github credentials for internal repos
-        # need a user with access to read the repos in ameritas
-        # When pip builds from source, it clones the repo for which it needs read access.
-        run: |
-          git config --global url."https://${{ secrets.GHP_USER }}:${{ secrets.GHP_TOKEN }}@github".insteadOf https://github
-      - name: Run pre-script
-        if: ${{ inputs.pre-script != '' }}
-        run: ${{ inputs.pre-script }}
-      - name: Install poetry
-        run: pip install --upgrade pip poetry
-      - name: Install poetry-aws-sam
-        run: |
-          poetry self add git+https://github.com/ameritascorp/APICOE-poetry-aws-sam.git@v1.1.0
-      - name: SAM build
-        # without-hashes: needed for installing from source.
-        # pip, for some reason, doesn't like the hashes in the requirements file when it
-        # builds from source.
-        run: poetry sam --without-hashes
-      - name: SAM package
-        run: |
-          sam package \
-            --region ${{ inputs.aws-region }} \
-            --s3-bucket ${{ inputs.s3-bucket }}
-      - name: SAM deploy
-        run: |
-          if [[ -z "${{ inputs.parameter-overrides }}" ]]; then
-            echo 'Deploying without parameter overrides'
-            sam deploy \
-              --no-progressbar \
-              --no-confirm-changeset \
-              --no-fail-on-empty-changeset \
-              --region ${{ inputs.aws-region }} \
-              --s3-bucket ${{ inputs.s3-bucket }}
-          else
-            echo 'Deploying with parameter overrides'
-            sam deploy \
-              --no-progressbar \
-              --no-confirm-changeset \
-              --no-fail-on-empty-changeset \
-              --region ${{ inputs.aws-region }} \
-              --s3-bucket ${{ inputs.s3-bucket }} \
-              --parameter-overrides \
-                ${{ inputs.parameter-overrides }}
-          fi
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2  # Change this to your desired AWS region
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      - name: Build SAM application
+        run: sam build --template samtemplate.yml
+
+      - name: Package SAM application
+        run: sam package --output-template-file packaged.yaml --s3-bucket samtestbucket22  # Change this to your S3 bucket name
+
+      - name: Deploy SAM application
+        run: sam deploy --stack-name samdeploymenttest --template-file packaged.yaml --capabilities CAPABILITY_IAM
