@@ -1,7 +1,6 @@
-name: Deploy SAM Template
-
+name: Deploy to AWS
 on:
-  workflow_call:  # Manually trigger the workflow
+  workflow_call:
     inputs:
       environment:
         description: What AWS environment to deploy to
@@ -31,12 +30,12 @@ on:
         description: Where the PYTHON source code files reside in this repo
         required: false
         type: string
-        default: .
+        default: ./app
       python-version:
         description: What version of Python to use
         required: false
         type: string
-        default: '3.11'
+        default: '3.10'
       pre-script:
         description: A custom script that might be needed before deploying
         required: false
@@ -44,24 +43,23 @@ on:
         default: ''
 
 jobs:
+
   deploy:
-    name: Deploy SAM Template
+    name: Prepare and deploy SAM application
     runs-on: ubuntu-latest
-
+    # Set the environment
+    environment:
+      name: ${{ inputs.environment }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-        env:
-          name: ${{ inputs.environment }}
-
-      - name: Set up AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2  # Change this to your desired AWS region
-
+      - name: Given environment, select appropriate creds
+        run: |
+          DEPLOY_ENV=$(echo ${{ inputs.environment }} | tr '[:lower:]' '[:upper:]')
+          if [[ ! "DEV-TEST-MODEL-PROD" =~ (-|^)$DEPLOY_ENV(-|$) ]]; then
+            echo "Invalid environment specified: ${{ inputs.environment }}"
+            exit 1
+          fi
+          echo "access_key_id=AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+          echo "secret_access_key=AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
       - name: Env
         run: bash -c set
       - name: Checkout code
@@ -76,17 +74,17 @@ jobs:
         uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
-      #- name: Setup AWS credentials
-        #uses: aws-actions/configure-aws-credentials@v2
-        #with:
-          #aws-access-key-id: ${{ secrets[env.access_key_id] }}
-          #aws-secret-access-key: ${{ secrets[env.secret_access_key] }}
-          #aws-region: ${{ inputs.aws-region }}
-      #- name: Set github credentials for internal repos
+      - name: Setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets[env.access_key_id] }}
+          aws-secret-access-key: ${{ secrets[env.secret_access_key] }}
+          aws-region: ${{ inputs.aws-region }}
+      - name: Set github credentials for internal repos
         # need a user with access to read the repos in ameritas
         # When pip builds from source, it clones the repo for which it needs read access.
-        #run: |
-          #git config --global url."https://${{ secrets.GHP_USER }}:${{ secrets.GHP_TOKEN }}@github".insteadOf https://github
+        run: |
+          git config --global url."https://${{ secrets.GHP_USER }}:${{ secrets.GHP_TOKEN }}@github".insteadOf https://github
       - name: Run pre-script
         if: ${{ inputs.pre-script != '' }}
         run: ${{ inputs.pre-script }}
